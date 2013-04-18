@@ -233,7 +233,7 @@ if __name__ == "__main__":
     for u in range(options.threadpool):
         tdb = Thread(target=save2Db, args=(options.deep, options.dbfile, log))
         tdb.daemon = True
-    tdb.start()
+        tdb.start()
 
     queue.join()
     db_queue.join()
