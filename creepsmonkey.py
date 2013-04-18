@@ -8,7 +8,7 @@ import socket
 import logging
 import urllib2, urlparse
 from Queue import Queue, Empty
-from threading import Thread, Lock, Event, current_thread, activeCount
+from threading import Thread, Lock
 from httplib import BadStatusLine
 from bs4 import BeautifulSoup
 
@@ -119,9 +119,10 @@ def processHtml(response, options_url, url, log):
     return same_site
 
 
-def conn2Db(options_dbfile):
+def save2Db(options_deep, options_dbfile, log):
+    '''将传入的URL和深度存入指定数据库‘'''
     log.debug(u'连接数据库')
-    with sqlite3.connect(options_dbfile, isolation_level=None) as connect_db:
+    with sqlite3.connect(options_dbfile, isolation_level=None, check_same_thread=False) as connect_db:
         db = connect_db.cursor()
         log.debug(u'连接数据库成功')
         log.debug(u'建立表格')
@@ -132,12 +133,7 @@ def conn2Db(options_dbfile):
         else:
             log.debug(u'表格建立成功')
 
-    return db
-
-
-def save2Db(options_deep, db, log):
-    '''将传入的URL和深度存入指定数据库‘'''
-    while True:
+        while True:
             try:
                 (deep, url) = db_queue.get(True, 30)
             except Empty:
@@ -227,7 +223,6 @@ if __name__ == "__main__":
     log = logSet(options.loglevel)
     queue.put((-1, options.url))
     visited_links.append(options.url)
-    db = conn2Db(options.dbfile)
 
     for i in range(options.threadpool):
         t = Thread(target=getUrl, args=(options.url, options.keyword, options.deep, log))
@@ -236,7 +231,7 @@ if __name__ == "__main__":
     log.debug(u'开始爬取')
 
     for u in range(options.threadpool):
-        tdb = Thread(target=save2Db, args=(options.deep, db, log))
+        tdb = Thread(target=save2Db, args=(options.deep, options.dbfile, log))
         tdb.daemon = True
     tdb.start()
 
